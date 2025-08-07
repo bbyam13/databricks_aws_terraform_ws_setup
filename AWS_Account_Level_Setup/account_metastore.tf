@@ -1,6 +1,6 @@
 resource "databricks_metastore" "this" {
   provider = databricks.accounts
-  name          = "wldemo-metastore"
+  name          = "demo-metastore"
   owner         = var.user_name
   region        = "us-east-1"
   force_destroy = true
