@@ -1,0 +1,7 @@
+databricks_account_id = "YOUR DATABRICKS ACCOUNT ID"
+metastore_id = "YOUR METASTORE ID"
+databricks_aws_account_id = "YOUR AWS ACCOUNT ID"
+user_name = "YOUR USERNAME"
+cidr_block = "10.10.0.0/16"
+region = "us-east-1"
+env = "dev"
