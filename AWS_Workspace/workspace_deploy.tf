@@ -10,9 +10,9 @@ locals {
     }
   force_destroy = true #destroy root bucket when deleting stack?
 
-# we provide a VPC endpoint service which is what thigns connect to
-  pl_service_relay = "com.amazonaws.vpce.us-east-1.vpce-svc-00018a8c3ff62ffdf" #SCC secure cluster connectivity relay
-  pl_service_workspace = "com.amazonaws.vpce.us-east-1.vpce-svc-09143d1e626de2f04" #the rest API
+# we provide a VPC endpoint service which is what things connect to
+  pl_service_relay = "${var.private_link_service_relay}" 
+  pl_service_workspace = "${var.private_link_service_workspace}"
 }
 
 ##Cross-Account IAM role

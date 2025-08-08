@@ -35,6 +35,14 @@ variable "env" {
   default     = "dev"
 }
 
+variable "private_link_service_relay" {
+  description = "VPC endpoint service domains required for workspace to use AWS PrivateLink - SCC secure cluster connectivity relay"
+}
+
+variable "private_link_service_workspace" {
+  description = "VPC endpoint service domains required for workspace to use AWS PrivateLink - the rest API"
+}
+
 provider "aws" {
     # provide AWS auth here
     region = var.region
