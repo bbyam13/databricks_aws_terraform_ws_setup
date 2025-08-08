@@ -86,7 +86,7 @@ The workspace deployment creates a complete Databricks workspace with networking
   - **Reference Schema**: Full access to all groups (reference/lookup data)
 
 #### Variable Files
-Use these to configure deployment of the workspace. 
+Use these to configure deployment of your workspaces. 
 
 ##### `devvars.tfvars`
 - **Purpose**: Sample Development environment variable values
