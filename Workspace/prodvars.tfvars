@@ -1,6 +1,6 @@
 metastore_id = "METASTORE ID CREATED IN ACCOUNT LEVEL SETUP"
 databricks_account_id = "DATABRICKS ACCOUNT ID"
-databricks_aws_account_id = "AWS ACCOUNT ID"
+databricks_aws_account_id = "DatabricksAWS ACCOUNT ID"
 user_name = "YOUR USERNAME"
 cidr_block = "10.10.0.0/16"
 region = "us-east-1"
