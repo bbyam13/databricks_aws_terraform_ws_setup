@@ -139,7 +139,7 @@ resource "databricks_storage_credential" "storage_credential" {
   force_destroy = true
 }
 
-# Create external location for the S3 bucket
+# Create external location for the S3 bucket with file events enabled
 resource "databricks_external_location" "location" {
   provider        = databricks.workspace
   name            = "${var.location_name}"
@@ -149,10 +149,13 @@ resource "databricks_external_location" "location" {
   read_only       = true
   force_destroy   = true
   skip_validation = true
+  enable_file_events = true
+
   depends_on = [
     databricks_storage_credential.storage_credential,
     data.aws_s3_bucket.bucket,
-    aws_iam_role_policy_attachment.access_role_policy_attachment
+    aws_iam_role_policy_attachment.access_role_policy_attachment,
+    aws_iam_role_policy_attachment.access_role_policy_attachment_managed_file_events
   ]
 }
 
