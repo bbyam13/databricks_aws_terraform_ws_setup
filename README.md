@@ -67,7 +67,7 @@ The account-level setup creates foundational resources that will be used across 
   - **Product Managers Group**: Workspace and SQL access for business insights
   - **Design Group**: Workspace and SQL access for design-related analytics
   - **Backend Group**: Workspace access for backend development teams
-  - **Metastore Admin Group**: Assigned as metastore admin - ownsership and control over metastore created. 
+  - **Metastore Admin Group**: Assigned as metastore admin - ownership and control over metastore created. 
 
 #### `account_metastore.tf`
 - **Purpose**: Creates the Unity Catalog metastore
