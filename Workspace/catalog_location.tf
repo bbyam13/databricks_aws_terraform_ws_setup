@@ -1,0 +1,109 @@
+data "aws_caller_identity" "current" {}
+
+locals {
+    uc_iam_role = "${var.env}-x-access-role"
+}
+
+# create a storage credential 
+resource "databricks_storage_credential" "x_credential" {
+  provider = databricks.workspace
+  name = "${var.env}-x-credential"
+  //cannot reference aws_iam_role directly, as it will create circular dependency
+  aws_iam_role {
+    role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.uc_iam_role}"
+  }
+  comment = "Managed by TF"
+  force_destroy = true
+  depends_on = [databricks_mws_workspaces.this, time_sleep.wait_for_metastore_assignment]
+}
+
+# Create a new S3 bucket with prefixes for data layers
+resource "aws_s3_bucket" "x_bucket" {
+  bucket        = "x-${var.env}"
+  force_destroy = true
+
+  tags = {
+    Name        = "${var.env} x Data Lake"
+    Environment = var.env
+  }
+}
+
+# Block public access to the bucket
+resource "aws_s3_bucket_public_access_block" "x_bucket_block" {
+  bucket = aws_s3_bucket.x_bucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Create folder-like prefixes in S3 by uploading empty objects
+locals {
+  prefixes = ["bronze", "silver", "gold", "playground", "reference", "finance", "raw"]
+}
+
+resource "aws_s3_object" "prefixes" {
+  for_each = toset(local.prefixes)
+
+  bucket = aws_s3_bucket.x_bucket.bucket
+  key    = "${each.key}/"
+  source = "/dev/null"
+  etag   = filemd5("/dev/null") # Required to avoid lifecycle errors with /dev/null
+
+  depends_on = [aws_s3_bucket.x_bucket]
+}
+
+data "databricks_aws_unity_catalog_assume_role_policy" "this" {
+  aws_account_id = data.aws_caller_identity.current.account_id
+  role_name      = local.uc_iam_role
+  external_id    = databricks_storage_credential.x_credential.aws_iam_role[0].external_id
+}
+
+data "databricks_aws_unity_catalog_policy" "this" {
+  aws_account_id = data.aws_caller_identity.current.account_id
+  bucket_name    = aws_s3_bucket.x_bucket.bucket
+  role_name      = local.uc_iam_role
+}
+
+resource "aws_iam_policy" "external_data_access" {
+  policy = data.databricks_aws_unity_catalog_policy.this.json
+  tags = merge({
+    Name = "${local.prefix}-unity-catalog external access IAM policy"
+  })
+}
+
+# Create a dedicated IAM role for x bucket access
+resource "aws_iam_role" "x_access_role" {
+  name = "${var.env}-x-access-role"
+  
+  # Add a description for better documentation
+  description = "Role for accessing the x data lake bucket in ${var.env} environment"
+  assume_role_policy  = data.databricks_aws_unity_catalog_assume_role_policy.this.json
+  tags = {
+    Name        = "${var.env} x Access Role"
+    Environment = var.env
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "x_access_role_policy_attachment" {
+  role       = aws_iam_role.x_access_role.name
+  policy_arn = aws_iam_policy.external_data_access.arn
+  depends_on = [aws_iam_role.x_access_role]
+}
+
+# Create external location for the S3 bucket
+resource "databricks_external_location" "x_location" {
+  provider = databricks.workspace
+  name            = "x_${var.env}_location"
+  url             = "s3://${aws_s3_bucket.x_bucket.bucket}"
+  credential_name = databricks_storage_credential.x_credential.id
+  comment         = "External location for ${var.env} x data lake"
+  force_destroy = true
+  skip_validation = true
+  depends_on = [
+    databricks_storage_credential.x_credential,
+    aws_s3_bucket.x_bucket,
+    aws_iam_role_policy_attachment.x_access_role_policy_attachment
+  ]
+}
