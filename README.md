@@ -20,7 +20,7 @@ The modules have specific dependencies that require a particular deployment sequ
    - Creates Unity Catalog metastore and account-level groups
    - Required by both workspace and telemetry data modules
 
-2. **Intial Workspace Deployment (workspace)**
+2. **Initial Workspace Deployment (workspace)**
    - pass id of newly created metastore into the vars.tfvars 
    ```bash
    cd workspace
@@ -39,12 +39,12 @@ The modules have specific dependencies that require a particular deployment sequ
    - **Dependency**: Requires workspace to exist (external location creation is workspace-level API)
    - Enables Unity Catalog access to telemetry data across workspaces
 
-4. **Reapply Intial Workspace (workspace)** 
+4. **Reapply Initial Workspace (workspace)** 
    ```bash
    cd workspace
    terraform apply -var-file="devvars.tfvars"
    ```
-   - Detects telemetry external location and creates telemetry volume
+   - Will detect newly created telemetry external location and creates telemetry volume
    - Integrates telemetry data access into workspace catalog structure
 
 5. **Multi-Workspace Deployment (workspace)**
