@@ -144,7 +144,6 @@ The workspace_SRA module orchestrates both account-level and workspace-level res
 - **Contents**:
   - **Restrictive Access Controls**: Limits Databricks access to specific paths and operations
   - **SSL Enforcement**: Denies non-SSL requests to enhance security
-  - **Government Cloud Support**: Handles civilian and DoD shard configurations
 
 ##### `system_schema/`
 - **Purpose**: Enables Databricks system tables for observability and governance
