@@ -54,7 +54,7 @@ The modules have specific dependencies that require a particular deployment sequ
 
 5. **Multi-Workspace Deployment (workspace)**
    - For additional workspaces sharing the same metastore and telemetry data, use the workspace module with environment-specific variable files
-   - Use [terraform worksapces](terraform workspace new dev) to manage multiple isolated environments—such as development, staging, and production—within a single configuration, each with its own state file and resources.
+   - Use [terraform worksapces]([terraform workspace new dev]([https://spacelift.io/blog/terraform-workspaces)](https://developer.hashicorp.com/terraform/cli/workspaces)) to manage multiple isolated environments—such as development, staging, and production—within a single configuration, each with its own state file and resources.
    - Ensure `telemetry_bucket_name`,  `telemetry_bucket_env_prefix`, and `telemetry_location_name` is configured if telemetry access is needed
     ```bash
    cd workspace
