@@ -196,7 +196,7 @@ Deploys a Databricks workspace using a modular architecture based on the [Securi
 
 The workspace module orchestrates both account and workspace API resources through organized sub-modules.
 
-#### Databricks Account API Modules (`modules/databricks_account/`)
+#### Databricks Account API Modules (`databricks_account/`)
 
 ##### `unity_catalog_metastore_assignment/`
 - **Purpose**: Assigns Unity Catalog metastore to the workspace
@@ -215,7 +215,7 @@ The workspace module orchestrates both account and workspace API resources throu
   - **Private Access Settings**: Account-level private access configuration
   - **Workspace Creation**: Complete Databricks workspace with enterprise pricing tier and secure cluster connectivity
 
-#### Databricks Workspace API Modules (`modules/databricks_workspace/`)
+#### Databricks Workspace API Modules (`databricks_workspace/`)
 
 ##### `restrictive_root_bucket/`
 - **Purpose**: Applies security-hardened bucket policies to root storage
@@ -230,47 +230,53 @@ The workspace module orchestrates both account and workspace API resources throu
 ##### `unity_catalog_catalog_creation/`
 - **Purpose**: Creates Unity Catalog structure with security controls
 - **Contents**:
-  - **KMS Encryption**: Dedicated encryption key for catalog storage
-  - **S3 Bucket**: Secure data lake bucket with encryption and versioning
-  - **IAM Role**: Unity Catalog access role with least-privilege permissions
-  - **Storage Credential**: Databricks credential for S3 access
-  - **External Location**: Unity Catalog external location for data access
-  - **Catalog and Schema Structure**: Organized data layer schemas
+  - **S3 Bucket**: Secure data lake bucket with encryption by SSE-S3 (`main.tf`)
+  - **IAM Role**: Unity Catalog access role with least-privilege permissions (`main.tf`)
+  - **Storage Credential**: Databricks credential for S3 access (`main.tf`)
+  - **External Location**: Unity Catalog external location for data access (`main.tf`)
+  - **Catalog and Schema Structure**: Creates bronze, silver, gold, playground, reference, finance, and raw schemas (`catalog_structure.tf`)
 
 ##### `telemetry_external_location/`
-- **Purpose**: Creates read-only external location for telemetry data access per workspace. Access is specific to the telemetry bucket prefix/folder provided
-- **Contents**:
-  - **Storage Credential**: Links to existing telemetry IAM role for S3 bucket access
-  - **External Location**: Read-only Unity Catalog external location for environment-specific telemetry data
+- **Purpose**: Creates read-only external location for telemetry data access per workspace. Access is specific to the telemetry bucket prefix/folder provided. The external location is set up to utilize managed file events for better scalability with autoloader
+- **Contents** (`uc_external_location_read_only.tf`):
+  - **Storage Credential**: Links to telemetry IAM role for S3 bucket access
+  - **External Location**: Read-only Unity Catalog external location for environment-specific telemetry data with managed SQS file events
   - **Conditional Creation**: Only creates when telemetry bucket is configured
 
 #### Core Configuration Files
 
-#### `main.tf`
+##### `main.tf`
 - **Purpose**: Orchestrates all modules and defines resource dependencies
 - **Contents**: Module calls for workspace creation, metastore assignment, user permissions, catalog setup, system tables, restrictive bucket policies, and telemetry external location (when enabled)
 
-#### `network.tf`
+##### `catalog_permissions.tf`
+- **Purpose**: Manages Unity Catalog permissions for account groups
+- **Contents**: 
+  - **Catalog Access Grants**: Grants USE_CATALOG permissions to account groups
+  - **Schema-Level Permissions**: Configures granular permissions for bronze, silver, gold, reference, and raw schemas
+  - **Role-Based Access**: Different privilege levels for data engineers, analysts, scientists, product managers, design, and backend teams
+
+##### `network.tf`
 - **Purpose**: Creates customer managed VPC infrastructure
 - **Contents**: VPC, subnets, internet gateway, NAT gateway, and routing configuration
 
-#### `vpc_endpoints.tf`
+##### `vpc_endpoints.tf`
 - **Purpose**: Establishes secure AWS service connectivity
 - **Contents**: VPC endpoints for S3, Kinesis, and STS services
 
-#### `credential.tf`
+##### `credential.tf`
 - **Purpose**: Creates cross-account IAM role for Databricks
 - **Contents**: IAM role, policies, and trust relationships for secure AWS resource access
 
-#### `root_s3_bucket.tf`
+##### `root_s3_bucket.tf`
 - **Purpose**: Creates root storage bucket for workspace
-- **Contents**: S3 bucket with encryption, versioning, and security configurations
+- **Contents**: S3 bucket with encryption (SSE-S3)
 
-#### `service_principal.tf`
+##### `service_principal.tf`
 - **Purpose**: Creates workspace service principal for automated operations
 - **Contents**: Job executor service principal with workspace ADMIN permissions for automation tasks
 
-#### `telemetry_volume.tf`
+##### `telemetry_volume.tf`
 - **Purpose**: Creates Unity Catalog volumes for telemetry data access
 - **Contents**: 
   - **External Telemetry Volume**: Maps to environment-specific telemetry data in S3 bucket
