@@ -1,82 +1,186 @@
 # Databricks AWS Terraform Workspace Setup
 
-This Terraform project automates the deployment of a Databricks environment on AWS including account-level configuration, telemetry data acesss from an existing S3 bucket, and workspace deployment with Unity Catalog integration.
+This Terraform project automates the deployment of a Databricks environment on AWS including account-level configuration, telemetry data access from an existing S3 bucket, and workspace deployment with Unity Catalog integration.
 
 ## Project Structure
 
-The project is organized into three main terraform root modules: (1) account level setup, (2) telemetry data, and (3) workspace. The account-level setup creates foundational resources that will be used across workspaces - the Unity Catalog metastore and account groups. The telemetry data module creates infrastructure for accessing telemetry data (existing s3 bucket) across workspaces with a Unity Catalog external location. The workspace project deploys a workspace with a customer managed VPC along with an associated UC catalog with multiple schemas and permissions for the account groups. It is desinged to handle deploying several workspaces within the same account using the same Unity Catalog metastore.
+The project is organized as a unified Terraform deployment that creates account-level resources (Unity Catalog metastore and account groups) and workspace deployment in a single coordinated process. The deployment creates foundational resources that are shared across workspaces - the Unity Catalog metastore and account groups, and workspaces with customer managed VPC along with associated UC catalogs with multiple schemas and permissions for the account groups. Each workspace creates its own telemetry data access infrastructure when enabled. It is designed to handle deploying several workspaces within the same account using the same Unity Catalog metastore.
 
-## Deployment Order
+**PLEASE NOTE**: Each workspace creates its own independent telemetry access infrastructure (external locations and volume) for the environment-specific folder within the shared telemetry S3 bucket. This allows workspaces to be safely deleted or created without affecting telemetry data access for other workspaces.
 
-The modules have specific dependencies that require a particular deployment sequence. The telemetry data module requires an existing workspace to be deployed because external location creation uses workspace-level APIs.
+## Setup
 
-### Step-by-Step Deployment Process
+### Prerequisites
+- **Terraform** installed
+- **AWS CLI** 
+- **Databricks CLI** 
+- **Databricks Service Principal** created in Databricks account for automation with Account Admin access
 
-1. **Account Level Setup**
-   ```bash
-   cd Account_Level_Setup
-   terraform apply -var-file="vars.tfvars"
-   ```
-   - Creates Unity Catalog metastore and account-level groups
-   - Required by both workspace and telemetry data modules
+### 2. Authentication with AWS and Databricks
 
-2. **Initial Workspace SRA Deployment (workspace)**
-   - Pass id of newly created metastore into the devvars.tfvars 
-   - Set `telemetry_location_name = null` in devvars.tfvars for initial deployment
-   ```bash
-   cd workspace
-   terraform apply -var-file="devvars.tfvars"
-   ```
-   - Creates workspace with customer managed VPC, Unity Catalog integration, and service principal
-   - Conditionally bypasses telemetry volume creation when `telemetry_location_name = null`
-   - Workspace functionality is fully operational without telemetry integration
+#### AWS Authentication
+Configure AWS credentials using one of these methods:
 
-3. **Telemetry Data (telemetry-data)** 
-   - pass workspace url of newly created workspace into the vars.tfvars 
-   ```bash
-   cd telemetry_data
-   terraform apply -var-file="vars.tfvars"
-   ```
-   - Creates external location for accessing existing telemetry S3 bucket
-   - **Dependency**: Requires workspace to exist (external location creation is workspace-level API)
-   - Enables Unity Catalog access to telemetry data across workspaces
+```bash
+# Option 1: AWS CLI configure
+aws configure
+# Enter your AWS Access Key ID, Secret Access Key, region, and output format
 
-4. **Reapply Workspace SRA with Telemetry Integration (workspace)** 
-   - Update `telemetry_location_name = "telemetry-data"` (name of external location created above) in devvars.tfvars
-   - set `telemetry_bucket_name` with name of telemetry bucket and `telemetry_bucket_env_prefix` as the telemetry bucket prefix for the enviornment.
-   ```bash
-   cd workspace
-   terraform apply -var-file="devvars.tfvars"
-   ```
-   - Detects telemetry external location and creates both external and managed telemetry volumes
-   - Creates `telemetry` volume in raw schema for environment-specific data access
-   - Creates `telemetry_metadata` volume for checkpoint data and processing metadata
+# Option 2: Environment variables
+export AWS_ACCESS_KEY_ID="your-access-key-id"
+export AWS_SECRET_ACCESS_KEY="your-secret-access-key"
+export AWS_DEFAULT_REGION="us-east-2"
 
-5. **Multi-Workspace Deployment (workspace)**
-   - For additional workspaces sharing the same metastore and telemetry data, use the workspace module with environment-specific variable files
-   - Use [terraform worksapces]([terraform workspace new dev]([https://spacelift.io/blog/terraform-workspaces)](https://developer.hashicorp.com/terraform/cli/workspaces)) to manage multiple isolated environments—such as development, staging, and production—within a single configuration, each with its own state file and resources.
-   - Ensure `telemetry_bucket_name`,  `telemetry_bucket_env_prefix`, and `telemetry_location_name` is configured if telemetry access is needed
-    ```bash
-   cd workspace
-   terraform workspace new dev
-   terraform apply -var-file="stagevars.tfvars"  # or prodvars.tfvars
-   ```
+# Option 3: AWS Profile (if using multiple accounts)
+export AWS_PROFILE="your-profile-name"
+
+# Verify AWS authentication
+aws sts get-caller-identity
+```
+
+#### Databricks Authentication
+Set up Databricks authentication using environment variables:
+
+```bash
+export DATABRICKS_CLIENT_ID="your-service-principal-client-id"
+export DATABRICKS_CLIENT_SECRET="your-service-principal-client-secret"
+```
 
 
-### 1. Account Level Setup (`Account_Level_Setup/`)
 
-The account-level setup creates foundational resources that will be used across workspaces - the Unity Catalog metastore and account groups
+### 3. Configure Variables
+
+Edit `terraform.tfvars` with your specific values:
+
+```hcl
+# =============================================================================
+# AWS Configuration
+# =============================================================================
+aws_account_id = "123456789012"           # Your AWS account ID
+region = "us-east-2"                      # Your preferred AWS region
+
+# =============================================================================
+# Databricks Configuration  
+# =============================================================================
+admin_user = "your-email@company.com"     # Your admin email
+metastore_name = "your-metastore-name"    # Unity Catalog metastore name
+executor_application_id = "abc123..."     # Service principal app ID
+databricks_account_id = "xyz789..."       # Your Databricks account ID
+
+# =============================================================================
+# Telemetry Configuration (Optional)
+# =============================================================================
+telemetry_bucket_name = "your-telemetry-bucket"    # Set to null to disable
+```
+
+### 4. Deploy Infrastructure
+
+```bash
+# Initialize Terraform
+terraform init
+
+# Review the deployment plan
+terraform plan
+
+# Deploy the infrastructure
+terraform apply
+```
+
+### 5.  Add and Destroy Workspaces
+
+#### Add a new workspace
+  1. Add a new workspace provider in `providers.tf`
+
+  ```hcl
+    provider "databricks" {
+      alias      = "STAGE_workspace"
+      host       = module.STAGE_workspace.databricks_host #this must match the module name
+      account_id = var.databricks_account_id
+    }
+  ```
+
+  2. Copy a sample workspace file - `workspace_dev.tf`
+  3. Modify the file for specs of the new workspace
+
+  ```hcl
+    module "STAGE_workspace" { #update to unique name
+        
+        ......
+          
+          databricks.created_workspace = databricks.STAGE_workspace 
+        
+        .......
+
+        #variables per workspace
+        resource_prefix                 = "byam-STAGE" #name of the workspace
+        deployment_name                 = "byam-STAGE" #url of workspace 
+        telemetry_bucket_env_prefix     = "STAGE"  # bucket prefix
+        
+        #Whether the catalog is accessible from all workspaces or a specific set of workspaces
+        catalog_isolation_mode          = "OPEN"
+      
+      .......
+
+      #workspace specific outputs
+      output "STAGE_workspace_url" { #update this to match the module name
+        value       = module.STAGE_workspace.databricks_host #update this to match the module nam
+
+      .......
+
+      output "STAGE_workspace_service_principal_id" { #update this to match the module name
+        value       = module.STAGE_workspace.service_principal_application_id #update this to match the module name
+  ```
+  
+  4. Deploy 
+  ```bash
+# Initialize Terraform to add new module
+terraform init
+
+# Review the deployment plan
+terraform plan
+
+# Deploy the new workspace resources
+terraform apply
+```
+#### Destroy a workspace
+
+1. Destroy the specific workspace module
+```bash
+
+# Review the deployment plan
+terraform plan -destroy -target=module.prod_workspace
+
+# Deploy the new workspace resources
+terraform apply -destroy -target=module.prod_workspace
+```
+
+**WARNING: The command `terraform destroy` WILL ATTEMPT TO DELETE ALL RESOURCES**
+
+
+
+
+
+## Architecture
+
+### 1. Account Level Configuration
+
+The account-level configuration creates foundational resources that will be used across workspaces - the Unity Catalog metastore and account groups
 
 #### `account_groups.tf`
-- **Purpose**: Creates account-level user groups
+- **Purpose**: Creates account-level user groups with automated member assignments
 - **Contents**:
-  - **Data Engineers Group**: Full workspace access with cluster creation privileges
-  - **Data Analysts Group**: Workspace and SQL access for analysis tasks
-  - **Data Scientists Group**: Workspace and SQL access for ML/analytics work
-  - **Product Managers Group**: Workspace and SQL access for business insights
-  - **Design Group**: Workspace and SQL access for design-related analytics
-  - **Backend Group**: Workspace access for backend development teams
-  - **Metastore Admin Group**: Assigned as metastore admin - ownsership and control over metastore created. 
+  - **Locals Configuration**: Defines all group configurations using a `locals` block for maintainability
+  - **Dynamic Group Creation**: Uses `for_each` to create groups based on the local configuration
+  - **Group Types Created**:
+    - **Data Engineers Group**: Full workspace access with cluster creation privileges
+    - **Data Analysts Group**: Workspace and SQL access for analysis tasks
+    - **Data Scientists Group**: Workspace and SQL access for ML/analytics work
+    - **Product Managers Group**: Workspace and SQL access for business insights
+    - **Design Group**: Workspace and SQL access for design-related analytics
+    - **Backend Group**: Workspace access for backend development teams
+    - **Metastore Admin Group**: Ownership and control over metastore
+  - **Admin User Assignment**: Automatically assigns the specified admin user to metastore admins group
+  - **Service Principal Assignment**: Automatically assigns the executor service principal to metastore admins group
 
 #### `account_metastore.tf`
 - **Purpose**: Creates the Unity Catalog metastore
@@ -84,41 +188,15 @@ The account-level setup creates foundational resources that will be used across 
   - Unity Catalog metastore resource configuration
   - Ownership assignment to specified user
 
-#### `vars.tfvars`
-- **Purpose**: Variable definitions file for account-level configuration
-- **Contents**: Placeholder values for Databricks account ID, AWS account ID, username, and region
 
-### 2. Telemetry Data (`telemetry_data/`)
 
-Creates the infrastructure for handling telemetry data with Unity Catalog integration, including external location setup and file event processing.
+### 2. Workspace Deployment (`modules/workspace_setup/`)
 
-#### `telemetry_location.tf`
-- **Purpose**: Creates external location and IAM infrastructure for telemetry data access
-- **Contents**:
-  - **IAM Role and Policy**: Secure role for Databricks to access telemetry S3 bucket
-  - **Storage Credential**: Databricks credential linked to IAM role for S3 access
-  - **External Location**: Unity Catalog external location pointing to telemetry S3 bucket
-  - **File Events**: Enables automatic file event notifications with managed SQS queue
-  - **S3 Bucket Integration**: References existing telemetry data bucket for external access
+Deploys a Databricks workspace using a modular architecture based on the [Security Reference Architecture (SRA) Template](https://github.com/databricks/terraform-databricks-sra/tree/main/aws). The deployment creates a complete Databricks workspace with customer managed VPC, Unity Catalog catalog for the workspace, a service principal, and volumes to access telemetry data (when enabled).
 
-#### `main.tf`
-- **Purpose**: Core terraform configuration for telemetry data module
-- **Contents**:
-  - Provider configuration for AWS and Databricks
-  - Variable definitions for telemetry location and bucket configuration
-  - Output values for workspace URL and integration details
+The workspace module orchestrates both account and workspace API resources through organized sub-modules.
 
-#### `vars.tfvars`
-- **Purpose**: Variable definitions file for telemetry data configuration
-- **Contents**: Values for metastore ID, workspace URL, telemetry location name, and bucket configuration
-
-### 3. Workspace (`workspace/`)
-
-Deploys a Databricks workspace using a modular architecture based on the [Security Reference Architecture (SRA)](https://github.com/databricks/terraform-databricks-sra/tree/main/aws). The deployment creates a complete Databricks workspace with customer managed VPC, Unity Catalog catalog for the workspace,a service principal, and a volume to access telemetry data.
-
-The workspace_SRA module orchestrates both account-level and workspace-level resources through organized sub-modules.
-
-#### Databricks Account Modules (`modules/databricks_account/`)
+#### Databricks Account API Modules (`modules/databricks_account/`)
 
 ##### `unity_catalog_metastore_assignment/`
 - **Purpose**: Assigns Unity Catalog metastore to the workspace
@@ -137,7 +215,7 @@ The workspace_SRA module orchestrates both account-level and workspace-level res
   - **Private Access Settings**: Account-level private access configuration
   - **Workspace Creation**: Complete Databricks workspace with enterprise pricing tier and secure cluster connectivity
 
-#### Databricks Workspace Modules (`modules/databricks_workspace/`)
+#### Databricks Workspace API Modules (`modules/databricks_workspace/`)
 
 ##### `restrictive_root_bucket/`
 - **Purpose**: Applies security-hardened bucket policies to root storage
@@ -159,11 +237,18 @@ The workspace_SRA module orchestrates both account-level and workspace-level res
   - **External Location**: Unity Catalog external location for data access
   - **Catalog and Schema Structure**: Organized data layer schemas
 
+##### `telemetry_external_location/`
+- **Purpose**: Creates read-only external location for telemetry data access per workspace. Access is specific to the telemetry bucket prefix/folder provided
+- **Contents**:
+  - **Storage Credential**: Links to existing telemetry IAM role for S3 bucket access
+  - **External Location**: Read-only Unity Catalog external location for environment-specific telemetry data
+  - **Conditional Creation**: Only creates when telemetry bucket is configured
+
 #### Core Configuration Files
 
 #### `main.tf`
 - **Purpose**: Orchestrates all modules and defines resource dependencies
-- **Contents**: Module calls for workspace creation, metastore assignment, user permissions, catalog setup, system tables, and restrictive bucket policies
+- **Contents**: Module calls for workspace creation, metastore assignment, user permissions, catalog setup, system tables, restrictive bucket policies, and telemetry external location (when enabled)
 
 #### `network.tf`
 - **Purpose**: Creates customer managed VPC infrastructure
@@ -188,13 +273,6 @@ The workspace_SRA module orchestrates both account-level and workspace-level res
 #### `telemetry_volume.tf`
 - **Purpose**: Creates Unity Catalog volumes for telemetry data access
 - **Contents**: 
-  - **External Telemetry Volume**: Maps to environment-specific telemetry data in S3
-  - **Managed Metadata Volume**: Stores checkpoint data and processing metadata
-  - **Conditional Creation**: Only creates volumes if telemetry external location exists
-
-#### Variable Files
-Configure your workspace deployment with environment-specific values.
-
-##### `devvars.tfvars`
-- **Purpose**: Development environment variable values
-
+  - **External Telemetry Volume**: Maps to environment-specific telemetry data in S3 bucket
+  - **Managed Telemetry Metadata Volume**: Stores checkpoint data and processing metadata
+  - **Conditional Creation**: Only creates volumes when telemetry bucket is configured

@@ -1,0 +1,31 @@
+# =============================================================================
+# AWS Configuration
+# =============================================================================
+
+# AWS account ID where resources will be deployed
+aws_account_id = ""
+
+# AWS region for deployment
+region = "us-east-2"
+
+# =============================================================================
+# Databricks Configuration
+# =============================================================================
+
+# Admin user email for workspaces and catalog management
+admin_user = "brendan.byam@databricks.com"
+
+# Unity Catalog metastore name
+metastore_name = "wldemo-metastore"
+
+# executor service principal application id
+executor_application_id = ""
+
+# Databricks account ID
+databricks_account_id = ""
+
+#telemetry bucket info
+telemetry_bucket_name = "telemetry-byam"
+
+
+
