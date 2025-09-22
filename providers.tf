@@ -3,6 +3,7 @@
 # export AWS_SECRET_ACCESS_KEY=SECRET_KEY
 # export AWS_SESSION_TOKEN=SESSION_TOKEN
 
+
 provider "aws" {
   region = var.region
 }
@@ -26,7 +27,7 @@ provider "databricks" {
 }
 
 provider "databricks" {
-  alias      = "uat_workspace"
-  host       = module.uat_workspace.databricks_host #this must match the module name
+  alias      = "prod_workspace"
+  host       = module.prod_workspace.databricks_host #this must match the module name
   account_id = var.databricks_account_id
 }

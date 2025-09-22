@@ -2,12 +2,12 @@
 # Workspace Setup: Prod Environment
 # =============================================================================================
 
-module "uat_workspace" {
+module "prod_workspace" {
   source = "./modules/workspace_setup"
 
   providers = {
     databricks.mws               = databricks.mws
-    databricks.created_workspace = databricks.uat_workspace #this must match the alias in the provider block
+    databricks.created_workspace = databricks.prod_workspace #this must match the alias in the provider block
     aws                          = aws
   }
 
@@ -27,21 +27,21 @@ module "uat_workspace" {
   databricks_gov_shard            = null
 
   #variables per workspace 
-  resource_prefix                 = "byam-uat" 
-  telemetry_bucket_env_prefix     = "uat"
-  deployment_name                 = "byam-uat"
+  resource_prefix                 = "byam-prod" 
+  telemetry_bucket_env_prefix     = "prod"
+  deployment_name                 = "byam-prod"
   #Whether the catalog is accessible from all workspaces or a specific set of workspaces (ISOLATED or OPEN): https://registry.tf-registry-prod-use1.terraform.io/providers/databricks/databricks/latest/docs/resources/catalog
   catalog_isolation_mode          = "OPEN"
 }
 
 #workspace specific outputs
-output "uat_workspace_url" { #update this to match the module name
-  value       = module.uat_workspace.databricks_host #update this to match the module name
+output "prod_workspace_url" { #update this to match the module name
+  value       = module.prod_workspace.databricks_host #update this to match the module name
   description = "Databricks workspace URL"
 }
 
-output "uat_workspace_service_principal_id" { #update this to match the module name
-  value       = module.uat_workspace.service_principal_application_id #update this to match the module name
+output "prod_workspace_service_principal_id" { #update this to match the module name
+  value       = module.prod_workspace.service_principal_application_id #update this to match the module name
   description = "Service principal application ID for the workspace"
 }
 
