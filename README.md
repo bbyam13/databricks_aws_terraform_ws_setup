@@ -12,8 +12,8 @@ The project is organized as a unified Terraform deployment that creates account-
 
 ### Prerequisites
 - **Terraform** installed
-- **AWS CLI** 
-- **Databricks CLI** 
+- **AWS CLI** Installed
+- **Databricks CLI**  Installed
 - **Databricks Service Principal** created in Databricks account for automation with Account Admin access
 
 ### 2. Authentication with AWS and Databricks
@@ -49,7 +49,7 @@ export DATABRICKS_CLIENT_SECRET="your-service-principal-client-secret"
 
 
 ### 3. Configure Variables
-
+rename `terraform.tfvars.example` -> `terraform.tfvars`
 Edit `terraform.tfvars` with your specific values:
 
 ```hcl
@@ -63,7 +63,7 @@ region = "us-east-2"                      # Your preferred AWS region
 # Databricks Configuration  
 # =============================================================================
 admin_user = "your-email@company.com"     # Your admin email
-metastore_name = "your-metastore-name"    # Unity Catalog metastore name
+metastore_name = "your-metastore-name"    # Name Unity Catalog metastore name (will be created)
 executor_application_id = "abc123..."     # Service principal app ID
 databricks_account_id = "xyz789..."       # Your Databricks account ID
 
