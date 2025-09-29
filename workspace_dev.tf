@@ -33,6 +33,15 @@ module "dev_workspace" {
   catalog_isolation_mode          = "OPEN"
 }
 
+# System Table Schemas Enablement - Tied to a single workspace to avoid disabling across all workspaces when destorying one
+module "system_table" {
+  source = "./modules/workspace_setup/databricks_workspace/system_schema"
+  providers = {
+    databricks = databricks.dev_workspace
+  }
+  depends_on = [module.dev_workspace]
+}
+
 #workspace specific outputs
 output "dev_workspace_url" { #update this to match the module name
   value       = module.dev_workspace.databricks_host #update this to match the module nam
